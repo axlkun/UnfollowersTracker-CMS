@@ -70,10 +70,10 @@ onMounted(() => {
                                   
                             </div>
 
-                            <h2 class="mt-6 text-xl font-semibold text-gray-900 dark:text-white">Mostrar Proyectos</h2>
+                            <h2 class="mt-6 text-xl font-semibold text-gray-900 dark:text-white">Monitorear usuarios</h2>
 
                             <p class="mt-4 text-gray-500 dark:text-gray-400 text-sm leading-relaxed">
-                                Muestre su trabajo de manera impresionante. Cree entradas para mostrar sus proyectos en su portafolio. Presente sus logros de una manera profesional y atractiva.
+                                Monitoree sus usuarios y reciba las últimas actualizaciones del uso de su plataforma en todo momento
                             </p>
                         </div>
                     </div>
@@ -106,7 +106,7 @@ onMounted(() => {
                             <h2 class="mt-6 text-xl font-semibold text-gray-900 dark:text-white">Contacto Directo</h2>
 
                             <p class="mt-4 text-gray-500 dark:text-gray-400 text-sm leading-relaxed">
-                                Configura un correo electrónico de contacto y recibe mensajes de tus visitantes de manera instantánea. Con nuestra sección de contacto, establece una comunicación directa y efectiva..
+                                Configure un correo electrónico de contacto y reciba mensajes de sus visitantes de manera instantánea. Con nuestra sección de contacto, establezca una comunicación directa y efectiva..
                             </p>
                         </div>
                     </div>
