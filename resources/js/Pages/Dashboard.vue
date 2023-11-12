@@ -3,10 +3,10 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import BreadCroumbs from '@/OwnComponents/BreadCroumbs.vue';
 
 const props = defineProps({
-    projectsCount: Number,
+    usersCount: Number,
     categoriesCount: Number,
     articlesCount: Number,
-    latestProject: String,
+    latestUser: String,
     latestCategory: String,
     latestArticle: String,
 });
@@ -37,12 +37,12 @@ const breadcrumbs = [
                               
 
                             <h5 class="mb-2 mt-2 text-2xl font-semibold tracking-tight text-gray-900 dark:text-white">
-                                Projects</h5>
+                                Users</h5>
 
-                            <p class="mb-3 font-normal text-gray-500 dark:text-gray-400">{{ projectsCount }} active projects</p>
+                            <p class="mb-3 font-normal text-gray-500 dark:text-gray-400">{{ usersCount }} registered users</p>
 
                             <p class="inline-flex items-center text-black-600">
-                                Last update: {{ latestProject }}
+                                Last update: {{ latestUser }}
                             </p>
                         </div>
                         <div
