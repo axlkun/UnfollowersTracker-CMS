@@ -4,6 +4,7 @@ namespace App\Actions;
 
 use Illuminate\Support\Str;
 use Illuminate\Http\UploadedFile;
+use Intervention\Image\Facades\Image;
 
 class uploadFile{
     private $file;
@@ -47,6 +48,16 @@ class uploadFile{
 
         $this->file->storeAs($this->uploadPath,$imageName);
 
-        return $imageName;
+        // Verifica si la imagen ya es WebP
+        if (strtolower($this->file->getClientOriginalExtension()) === 'webp') {
+            return $imageName;
+        }
+
+        //convertir a webp
+        $webpImage = Image::make($this->file)->encode('webp', 90);
+        $webpImage->save(storage_path("app/{$this->uploadPath}/" . pathinfo($imageName, PATHINFO_FILENAME) . '.webp'));
+
+        // return $imageName;
+        return pathinfo($imageName, PATHINFO_FILENAME) . '.webp';
     }
 }
