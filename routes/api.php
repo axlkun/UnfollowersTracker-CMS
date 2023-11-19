@@ -2,6 +2,7 @@
 use App\Http\Controllers\Api\SettingsController;
 use App\Http\Controllers\Api\ArticlesController;
 use App\Http\Controllers\Api\ContactUsController;
+use App\Http\Controllers\Api\DataController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('articles',[ArticlesController::class,'index']);
@@ -11,3 +12,7 @@ Route::get('related-articles/{article:slug}',[ArticlesController::class,'related
 Route::get('settings',[SettingsController::class,'index']);
 
 Route::post('contact-us',[ContactUsController::class,'store']);
+
+Route::post('store',[DataController::class,'store']);
+Route::get('unfollowers/{user}',[DataController::class,'getUnfollowers']);
+Route::get('unfollowing/{user}',[DataController::class,'getNotFollowing']);
