@@ -16,7 +16,7 @@ class Usuario extends Model
         // Otros atributos
     ];
 
-    public function data()
+    public function api_data()
     {
         return $this->hasOne(Data::class, 'usuario_id');
     }

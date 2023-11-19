@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\CategoriesController;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\UsuarioController;
 use App\Http\Controllers\Admin\SettingsController;
 
 /*
@@ -37,4 +38,6 @@ Route::middleware(['auth', 'verified'])
 
         Route::resource('categories',CategoriesController::class);
         Route::resource('articles',ArticlesController::class);
+
+        Route::get('users',[UsuarioController::class,'index'])->name('users.index');
     });
