@@ -9,7 +9,7 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import BreadCroumbs from '@/OwnComponents/BreadCroumbs.vue';
 
 const props = defineProps({
-    projects: Object,
+    users: Object,
 });
 
 const headers = [
@@ -24,7 +24,7 @@ const headers = [
 
 const breadcrumbs = [
     {
-        label: "Projects"
+        label: "Users"
     }
 ];
 
@@ -37,22 +37,13 @@ const breadcrumbs = [
         </template>
 
         <Container>
-            <PrimaryButton :href="route('projects.create')">Add new</PrimaryButton>
 
             <Card class="mt-4">
-                <AppTable :headers="headers" :items="projects">
-                    <tr v-for="project in projects.data" :key="project.id">
-                        <td>{{ project.title }}</td>
-                        <td>{{ project.company }}</td>
-                        <td>{{ project.created_at_formated }}</td>
-                        <td>
-                            <div class="flex items-center justify-end space-x-2">
-                                <EditBtn :url="route('projects.edit', { project: project.id })"></EditBtn>
-
-                                <DeleteBtn :url="route('projects.destroy', { project: project.id })"
-                                    module-name="project"></DeleteBtn>
-                            </div>
-                        </td>
+                <AppTable :headers="headers" :items="users">
+                    <tr v-for="user in users.data" :key="user.id">
+                        <td>{{ user.title }}</td>
+                        <td>{{ user.company }}</td>
+                        <td>{{ user.created_at_formated }}</td>
                     </tr>
                 </AppTable>
             </Card>
