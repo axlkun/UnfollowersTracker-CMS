@@ -9,6 +9,8 @@ class Data extends Model
 {
     use HasFactory;
 
+    protected $table = 'api_data';
+
     protected $fillable = [
         'usuario_id',
         'close_friends',

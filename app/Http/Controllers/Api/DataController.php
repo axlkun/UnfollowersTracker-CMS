@@ -110,7 +110,7 @@ class DataController extends Controller
             return false;
         }
 
-        $following = $usuario->data->following;
+        $following = $usuario->api_data->following;
 
         $array_seguidos = array();
 
@@ -138,7 +138,7 @@ class DataController extends Controller
             return false;
         }
 
-        $followers = $usuario->data->followers;
+        $followers = $usuario->api_data->followers;
 
         $array_seguidores = array();
 
