@@ -16,7 +16,7 @@ class UsuarioResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'username' => $this->name,
+            'username' => $this->username,
             'created_at_formated' => $this->when($this->created_at, function () {
                 return $this->created_at->diffForHumans();
             })
