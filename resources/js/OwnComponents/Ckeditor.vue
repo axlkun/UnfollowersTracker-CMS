@@ -1,22 +1,33 @@
 <script setup>
 import { ref, watch } from 'vue';
 import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
+import UploadAdapter from './uploadadapter.js'
 
 const props = defineProps({
-    modelValue: String
+  modelValue: String
 })
+
+function uploader(editor) {
+  editor.plugins.get('FileRepository').createUploadAdapter = function(loader) {
+    return new UploadAdapter(loader);
+  };
+};
+
 // const emit = defineEmits(['update:value']);
 const emit = defineEmits(['update:modelValue']);
 
 const editor = ref(ClassicEditor);
 const editorConfig = ref({
-    // The configuration of the editor.
+  // The configuration of the editor.
+  toolbar: ['heading', '|', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', '|', 'insertTable', '|', 'imageUpload', 'mediaEmbed', '|', 'undo', 'redo'],
+
+  extraPlugins: [uploader],
 });
 const text = ref(props.modelValue);
 
 // Observa cambios en la prop "modelValue" (v-model) del componente padre
 watch(() => props.modelValue, (newValue) => {
-    
+
   text.value = newValue;
 });
 
@@ -29,6 +40,5 @@ watch(text, (newText) => {
 </script>
 
 <template>
-
-    <ckeditor :editor="editor" v-model="text" :config="editorConfig"></ckeditor>
+  <ckeditor :editor="editor" v-model="text" :config="editorConfig"></ckeditor>
 </template>
