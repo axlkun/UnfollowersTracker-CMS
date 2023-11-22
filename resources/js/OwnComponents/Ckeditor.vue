@@ -1,6 +1,7 @@
 <script setup>
 import { ref, watch } from 'vue';
-import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
+// import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
+import ClassicEditor from 'ckeditor5-custom-build';
 import UploadAdapter from './uploadadapter.js'
 
 const props = defineProps({
@@ -19,7 +20,7 @@ const emit = defineEmits(['update:modelValue']);
 const editor = ref(ClassicEditor);
 const editorConfig = ref({
   // The configuration of the editor.
-  toolbar: ['heading', '|', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', '|', 'insertTable', '|', 'imageUpload', 'mediaEmbed', '|', 'undo', 'redo'],
+  // toolbar: ['heading', '|', 'bold', 'italic', 'link', 'bulletedList', 'numberedList', '|', 'insertTable', '|', 'imageUpload', 'mediaEmbed', '|', 'undo', 'redo'],
 
   extraPlugins: [uploader],
 });
