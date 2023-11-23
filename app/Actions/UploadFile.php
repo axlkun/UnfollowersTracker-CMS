@@ -6,7 +6,7 @@ use Illuminate\Support\Str;
 use Illuminate\Http\UploadedFile;
 use Intervention\Image\Facades\Image;
 
-class uploadFile{
+class UploadFile{
     private $file;
     private $uploadPath;
 
