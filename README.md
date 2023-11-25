@@ -11,34 +11,6 @@
 
 Fullstack Application developed with Vue - Inertiajs and Laravel - Jetstream where I can manage frontend sections of UnfollowersTracker: hero, about us, and contact, updating description and images. And I can create blog articles. All this data is exposed to an API to consume it from the frontend
 
-
-## Installation
-
-
-```bash
-  composer install
-```
-    
-## Set Environment
-```bash
-  cp .env.example .env
-```
-## Set the application key
-```bash
-  php artisan key:generate
-```
-## Run migrations
-```bash
-  php artisan migrate
-```
-## Run Start Application
-```bash
-  php artisan serve
-```
-## Documentation
-
-[Documentation](#)
-
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
