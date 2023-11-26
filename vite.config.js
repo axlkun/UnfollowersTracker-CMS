@@ -17,14 +17,4 @@ export default defineConfig({
             },
         }),
     ],
-    optimizeDeps: {
-        include: ['ckeditor5-custom-build']
-    },
-   
-    resolve: {
-        extensions: ['.js', '.vue', '.json'],
-        alias: {
-            '@': '/resources/js'
-        }
-    }
 });
