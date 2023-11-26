@@ -31,9 +31,7 @@ import { ShowBlocks } from '@ckeditor/ckeditor5-show-blocks';
 import {
 	Table,
 	TableCaption,
-	TableCellProperties,
 	TableColumnResize,
-	TableProperties,
 	TableToolbar
 } from '@ckeditor/ckeditor5-table';
 import { TextTransformation } from '@ckeditor/ckeditor5-typing';
@@ -73,9 +71,7 @@ class Editor extends ClassicEditor {
 		ShowBlocks,
 		Table,
 		TableCaption,
-		TableCellProperties,
 		TableColumnResize,
-		TableProperties,
 		TableToolbar,
 		TextTransformation,
 		WordCount
@@ -124,8 +120,6 @@ class Editor extends ClassicEditor {
 				'tableColumn',
 				'tableRow',
 				'mergeTableCells',
-				'tableCellProperties',
-				'tableProperties'
 			]
 		}
 	};
