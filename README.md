@@ -9,7 +9,7 @@
 
 # UnfollowersTracker CMS
 
-Fullstack Application developed with Vue - Inertiajs and Laravel - Jetstream where I can manage frontend sections of UnfollowersTracker: hero, about us, and contact, updating description and images. And I can create blog articles. All this data is exposed to an API to consume it from the frontend
+Fullstack Application developed with Vue - Inertiajs and Laravel - Jetstream where I can manage frontend sections of [UnfollowersTracker](https://www.unfollowerstracker.com/): hero, about us, and contact, updating description and images. And I can create blog articles. All this data is exposed to an API to consume it from the frontend
 
 ## License
 
