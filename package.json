@@ -20,7 +20,7 @@
     },
     "dependencies": {
         "@ckeditor/ckeditor5-vue": "^5.1.0",
-        "ckeditor5-custom-build": "file:ckeditor",
+        "ckeditor5-custom-build": "file:ckeditor5",
         "primevue": "^3.37.0"
     }
 }
