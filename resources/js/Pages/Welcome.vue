@@ -103,7 +103,7 @@ onMounted(() => {
                                   
                             </div>
 
-                            <h2 class="mt-6 text-xl font-semibold text-gray-900 dark:text-white">Contacto Directo</h2>
+                            <h2 class="mt-6 text-xl font-semibold text-gray-900 dark:text-white">Contacto</h2>
 
                             <p class="mt-4 text-gray-500 dark:text-gray-400 text-sm leading-relaxed">
                                 Configure un correo electrónico de contacto y reciba mensajes de sus visitantes de manera instantánea. Con nuestra sección de contacto, establezca una comunicación directa y efectiva..
