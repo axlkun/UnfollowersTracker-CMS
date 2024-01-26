@@ -31,7 +31,8 @@ class ArticleResource extends JsonResource
             'created_at_formated' => $this->when($this->created_at, function(){
                 return $this->created_at->diffForHumans();
             }),
-            'created_date' => $this->when($this->created_at,function() {return $this->created_at->format('M d, Y');})
+            'created_date' => $this->when($this->created_at,function() {return $this->created_at->format('M d, Y');}),
+            'updated_date' => $this->when($this->updated_at,function() {return $this->updated_at->format('M d, Y');})
            ];
     }
 }
