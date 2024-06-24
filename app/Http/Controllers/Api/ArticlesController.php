@@ -7,13 +7,14 @@ use App\Actions\UploadFile;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ArticleResource;
+use App\Http\Resources\ArticleResourceIndex;
 
 class ArticlesController extends Controller
 {
     public function index(Request $request){
         $articles = Article::with(['categories'])->latest()->simplePaginate($request->get('limit',10));
 
-        return ArticleResource::collection($articles);
+        return ArticleResourceIndex::collection($articles);
     }
 
     public function show(Article $article){
