@@ -14,7 +14,7 @@ class DataController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'file' => 'required|file|mimes:zip|max:10240',
+            'file' => 'required|file|mimes:zip|max:15360',
             'username' => 'required|string|max:191'
         ]);
 
