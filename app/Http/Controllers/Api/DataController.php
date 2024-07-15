@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use App\Models\Usuario;
 use App\Models\Data;
+use Illuminate\Support\Facades\Log;
 
 class DataController extends Controller
 {
@@ -19,6 +20,12 @@ class DataController extends Controller
         ]);
 
         if ($validator->fails()) {
+
+            Log::error('Validation failed', [
+                'file' => $request->file('file') ? $request->file('file')->getClientOriginalName() : 'No file uploaded',
+                'errors' => $validator->messages()
+            ]);
+
             return response()->json([
                 'status' => 422,
                 'errors' => $validator->messages()
@@ -83,6 +90,13 @@ class DataController extends Controller
                 } catch (\Exception $e) {
                     DB::rollback(); // Revertir la transacción en caso de error
 
+                    Log::error('Transaction failed', [
+                        'file' => $archivo->getClientOriginalName(),
+                        'message' => $e->getMessage(),
+                        'file_location' => $e->getFile(),
+                        'line' => $e->getLine()
+                    ]);
+
                     return response()->json([
                         'status' => 500,
                         'message' => 'Something went wrong!',
@@ -94,6 +108,9 @@ class DataController extends Controller
                     ], 500);
                 }
             } else {
+
+                Log::error('Failed to open ZIP file', ['file' => $archivo->getClientOriginalName()]);
+
                 return response()->json([
                     'status' => 500,
                     'message' => 'Something went wrong!'
@@ -104,80 +121,112 @@ class DataController extends Controller
 
     public function getDataFollowing($user)
     {
-        $usuario = Usuario::where('username', $user)->first();
+        try {
+            $usuario = Usuario::where('username', $user)->first();
 
-        if (!$usuario) {
+            if (!$usuario) {
+                Log::warning('Error in getDataFollowing: User not found', ['username' => $user]);
+                return false;
+            }
+
+            $following = $usuario->api_data->following;
+            $array_seguidos = array();
+
+            // validacion aqui
+            foreach ($following['relationships_following'] as $data) {
+                $value = $data['string_list_data'][0]['value'];
+                $timestamp = date('Y-m-d', $data['string_list_data'][0]['timestamp']);
+                $link = $data['string_list_data'][0]['href'];
+
+                $array_seguidos[] = array(
+                    "user_name" => $value,
+                    "enlace" => $link,
+                    "date" => $timestamp
+                );
+            }
+
+            return $array_seguidos;
+        } catch (\Exception $e) {
+            Log::error('Error in getDataFollowing', [
+                'username' => $user,
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ]);
             return false;
         }
-
-        $following = $usuario->api_data->following;
-
-        $array_seguidos = array();
-
-        foreach ($following['relationships_following'] as $data) {
-
-            $value = $data['string_list_data'][0]['value'];
-            $timestamp = date('Y-m-d', $data['string_list_data'][0]['timestamp']);
-            $link = $data['string_list_data'][0]['href'];
-
-            $array_seguidos[] = array(
-                "user_name" => $value,
-                "enlace" => $link,
-                "date" => $timestamp
-            );
-        }
-
-        return $array_seguidos;
     }
 
     public function getDataFollowers($user)
     {
-        $usuario = Usuario::where('username', $user)->first();
+        try {
+            $usuario = Usuario::where('username', $user)->first();
 
-        if (!$usuario) {
+            if (!$usuario) {
+                Log::warning('Error in getDataFollowers: User not found', ['username' => $user]);
+                return false;
+            }
+
+            $followers = $usuario->api_data->followers;
+            $array_seguidores = array();
+
+            foreach ($followers as $data) {
+                $value = $data['string_list_data'][0]['value'];
+                $timestamp = date('Y-m-d', $data['string_list_data'][0]['timestamp']);
+                $link = $data['string_list_data'][0]['href'];
+
+                $array_seguidores[] = array(
+                    "user_name" => $value,
+                    "enlace" => $link,
+                    "date" => $timestamp
+                );
+            }
+
+            return $array_seguidores;
+        } catch (\Exception $e) {
+            Log::error('Error in getDataFollowers', [
+                'username' => $user,
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ]);
+
             return false;
         }
-
-        $followers = $usuario->api_data->followers;
-
-        $array_seguidores = array();
-
-        foreach ($followers as $data) {
-
-            $value = $data['string_list_data'][0]['value'];
-            $timestamp = date('Y-m-d', $data['string_list_data'][0]['timestamp']);
-            $link = $data['string_list_data'][0]['href'];
-
-            $array_seguidores[] = array(
-                "user_name" => $value,
-                "enlace" => $link,
-                "date" => $timestamp
-            );
-        }
-
-        return $array_seguidores;
     }
-    
+
     public function getUnfollowers($user)
     {
-        $following = $this->getDataFollowing($user);
-        $followers = $this->getDataFollowers($user);
+        try {
+            $following = $this->getDataFollowing($user);
+            $followers = $this->getDataFollowers($user);
 
-        if ($following && $followers) {
+            if ($following && $followers) {
+                $unfollowers_users = array_diff(array_column($following, 'user_name'), array_column($followers, 'user_name'));
+                $unfollowers_data = array_filter($following, function ($item) use ($unfollowers_users) {
+                    return in_array($item['user_name'], $unfollowers_users);
+                });
 
-            $unfollowers_users = array_diff(array_column($following, 'user_name'), array_column($followers, 'user_name'));
+                $unfollowers = array_values($unfollowers_data);
 
-            $unfollowers_data = array_filter($following, function ($item) use ($unfollowers_users) {
-                return in_array($item['user_name'], $unfollowers_users);
-            });
-
-            $unfollowers = array_values($unfollowers_data);
-
-            return response()->json([
-                'status' => 200,
-                'unfollowers' => $unfollowers
-            ], 200);
-        } else {
+                return response()->json([
+                    'status' => 200,
+                    'unfollowers' => $unfollowers
+                ], 200);
+            } else {
+                Log::warning('Following or followers data not found. ', ['username' => $user]);
+                return response()->json([
+                    'status' => 500,
+                    'message' => 'Something went wrong!'
+                ], 500);
+            }
+        } catch (\Exception $e) {
+            Log::error('Error in getUnfollowers', [
+                'username' => $user,
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ]);
             return response()->json([
                 'status' => 500,
                 'message' => 'Something went wrong!'
@@ -187,28 +236,40 @@ class DataController extends Controller
 
     public function getNotFollowing($user)
     {
-        $following = $this->getDataFollowing($user);
-        $followers = $this->getDataFollowers($user);
+        try {
+            $following = $this->getDataFollowing($user);
+            $followers = $this->getDataFollowers($user);
 
-        if ($following && $followers) {
+            if ($following && $followers) {
+                $unfollowing_users = array_diff(array_column($followers, 'user_name'), array_column($following, 'user_name'));
+                $unfollowing_data = array_filter($followers, function ($item) use ($unfollowing_users) {
+                    return in_array($item['user_name'], $unfollowing_users);
+                });
 
-            $unfollowing_users = array_diff(array_column($followers, 'user_name'), array_column($following, 'user_name'));
+                $unfollowing = array_values($unfollowing_data);
 
-            $unfollowing_data = array_filter($followers, function ($item) use ($unfollowing_users) {
-                return in_array($item['user_name'], $unfollowing_users);
-            });
-
-            $unfollowing = array_values($unfollowing_data);
-
+                return response()->json([
+                    'status' => 200,
+                    'unfollowing' => $unfollowing
+                ], 200);
+            } else {
+                Log::warning('Following or followers data not found', ['username' => $user]);
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'No such files found!'
+                ], 404);
+            }
+        } catch (\Exception $e) {
+            Log::error('Error in getNotFollowing', [
+                'username' => $user,
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ]);
             return response()->json([
-                'status' => 200,
-                'unfollowing' => $unfollowing
-            ], 200);
-        } else {
-            return response()->json([
-                'status' => 404,
-                'message' => 'No such files found!'
-            ], 404);
+                'status' => 500,
+                'message' => 'Something went wrong!'
+            ], 500);
         }
     }
 }
