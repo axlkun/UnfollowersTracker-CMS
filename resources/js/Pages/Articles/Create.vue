@@ -1,6 +1,6 @@
 <script setup>
 import { useForm } from '@inertiajs/vue3';
-import { watch, defineProps, onMounted, ref } from 'vue';
+import { watch, defineProps, onMounted, ref, computed } from 'vue';
 import { strSlug } from "@/helpers.js";
 
 import AppLayout from '@/Layouts/AppLayout.vue';
@@ -54,10 +54,15 @@ const breadcrumbs = [
     }
 ];
 
+const isEditMode = computed(() => props.edit);
+
 watch(
     () => form.title,
     (title) => {
-        form.slug = strSlug(title);
+        // si esta en modo edición no se actualiza el slug
+        if (!isEditMode.value) {
+            form.slug = strSlug(title);
+        }
     }
 )
 
