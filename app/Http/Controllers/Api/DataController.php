@@ -40,6 +40,8 @@ class DataController extends Controller
             DB::beginTransaction();
 
             try {
+
+                // evitar errores de unique constraint
                 $usuario = Usuario::updateOrCreate(
                     ['username' => $nombreUsuario],
                     [] 
