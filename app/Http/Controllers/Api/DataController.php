@@ -30,94 +30,108 @@ class DataController extends Controller
                 'status' => 422,
                 'errors' => $validator->messages()
             ], 422);
-        } else {
-            $archivo = $request->file('file');
-            $nombreUsuario = $request->username;
+        }
 
-            // Procesar el archivo ZIP y guardar los datos en la tabla "data"
-            $zip = new \ZipArchive;
+        $archivo = $request->file('file');
+        $nombreUsuario = strtolower(trim($request->username));
+        $zip = new \ZipArchive;
 
-            if ($zip->open($archivo)) {
-                DB::beginTransaction(); // Iniciar una transacción de base de datos
+        if ($zip->open($archivo)) {
+            DB::beginTransaction();
 
-                try {
-                    // Crear un nuevo registro en la tabla "usuarios"
-                    $usuario = Usuario::updateOrCreate([
-                        'username' => $nombreUsuario
-                    ]);
+            try {
+                $usuario = Usuario::updateOrCreate(
+                    ['username' => $nombreUsuario],
+                    [] 
+                );
 
-                    // Asociar el registro "data" al usuario recien creado
-                    $usuarioId = $usuario->id;
+                $usuarioId = $usuario->id;
+                $data = [];
 
-                    $data = []; // array para almacenar todos los campos de "data"
+                $requiredFiles = [
+                    'connections/followers_and_following/followers_1.json',
+                    'connections/followers_and_following/following.json',
+                ];
 
-                    for ($i = 0; $i < $zip->numFiles; $i++) {
-                        $nombreDocumento = $zip->getNameIndex($i);
-
-                        // quitar la extension al nombre de los JSON
-                        $nombreCampo = pathinfo($nombreDocumento, PATHINFO_FILENAME);
-
-                        $contenidoJSON = $zip->getFromName($nombreDocumento);
-
-                        // Decodificar el JSON y convertirlo en un array asociativo
-                        $datos = json_decode($contenidoJSON, true);
-
-                        // Agregar los datos al array
-                        $data[$nombreCampo] = $datos;
+                // Verificar que los archivos requeridos existan en el ZIP
+                foreach ($requiredFiles as $requiredFile) {
+                    if ($zip->locateName($requiredFile) === false) {
+                        throw new \Exception("ZIP File Incomplete. Missing file: '$requiredFile' ");
                     }
 
-                    // Crear un nuevo registro en la tabla "data" con todos los campos
-                    Data::updateOrCreate(
-                        ['usuario_id' => $usuarioId], // Condición para buscar un registro existente
-                        [ // Nuevos datos para actualizar
-                            'close_friends' => isset($data['close_friends']) ? $data['close_friends'] : null,
-                            'followers' => isset($data['followers_1']) ? $data['followers_1'] : null,
-                            'following' => isset($data['following']) ? $data['following'] : null,
-                            'hide_story_from' => isset($data['hide_story_from']) ? $data['hide_story_from'] : null,
-                            'pending_follow_requests' => isset($data['pending_follow_requests']) ? $data['pending_follow_requests'] : null,
-                            'recent_follow_requests' => isset($data['recent_follow_requests']) ? $data['recent_follow_requests'] : null,
-                            'recently_unfollowed_accounts' => isset($data['recently_unfollowed_accounts']) ? $data['recently_unfollowed_accounts'] : null,
-                            'removed_suggestions' => isset($data['removed_suggestions']) ? $data['removed_suggestions'] : null
-                        ]
-                    );
+                    $contenido = $zip->getFromName($requiredFile);
+                    $jsonDecoded = json_decode($contenido, true);
 
-                    DB::commit(); // Confirmar la transacción si todo fue exitoso
-
-                    return response()->json([
-                        'status' => 200,
-                        'message' => 'Data stored successfully'
-                    ], 200);
-                } catch (\Exception $e) {
-                    DB::rollback(); // Revertir la transacción en caso de error
-
-                    Log::error('Transaction failed', [
-                        'file' => $archivo->getClientOriginalName(),
-                        'message' => $e->getMessage(),
-                        'file_location' => $e->getFile(),
-                        'line' => $e->getLine()
-                    ]);
-
-                    return response()->json([
-                        'status' => 500,
-                        'message' => 'Something went wrong!',
-                        'error' => [
-                            'message' => $e->getMessage(),   // Mensaje de error
-                            'file' => $e->getFile(),         // Archivo donde ocurrió la excepción
-                            'line' => $e->getLine()          // Línea en la que ocurrió la excepción
-                        ]
-                    ], 500);
+                    if (is_null($jsonDecoded)) {
+                        throw new \Exception("Check your ZIP File. Error in File '$requiredFile' ");
+                    }
                 }
-            } else {
 
-                Log::error('Failed to open ZIP file', ['file' => $archivo->getClientOriginalName()]);
+                // Si los archivos obligatorios existen y son válidos, ahora procesamos todo
+                for ($i = 0; $i < $zip->numFiles; $i++) {
+                    $nombreDocumento = $zip->getNameIndex($i);
+
+                    // Solo procesar archivos JSON
+                    if (pathinfo($nombreDocumento, PATHINFO_EXTENSION) !== 'json') {
+                        continue;
+                    }
+
+                    $nombreCampo = pathinfo($nombreDocumento, PATHINFO_FILENAME);
+                    $contenidoJSON = $zip->getFromName($nombreDocumento);
+                    $datos = json_decode($contenidoJSON, true);
+
+                    // Validar si el JSON se pudo parsear correctamente
+                    if (!is_null($datos)) {
+                        $data[$nombreCampo] = $datos;
+                    }
+                }
+
+                // Guardar los datos en la base de datos
+                Data::updateOrCreate(
+                    ['usuario_id' => $usuarioId],
+                    [
+                        'close_friends' => $data['close_friends'] ?? null,
+                        'followers' => $data['followers_1'] ?? null,
+                        'following' => $data['following'] ?? null,
+                        'hide_story_from' => $data['hide_story_from'] ?? null,
+                        'pending_follow_requests' => $data['pending_follow_requests'] ?? null,
+                        'recent_follow_requests' => $data['recent_follow_requests'] ?? null,
+                        'recently_unfollowed_accounts' => $data['recently_unfollowed_accounts'] ?? null,
+                        'removed_suggestions' => $data['removed_suggestions'] ?? null
+                    ]
+                );
+
+                DB::commit();
 
                 return response()->json([
-                    'status' => 500,
-                    'message' => 'Something went wrong!'
-                ], 500);
+                    'status' => 200,
+                    'message' => 'Data stored successfully'
+                ], 200);
+            } catch (\Exception $e) {
+                DB::rollback();
+
+                Log::error('Transaction failed', [
+                    'file' => $archivo->getClientOriginalName(),
+                    'message' => $e->getMessage(),
+                    'file_location' => $e->getFile(),
+                    'line' => $e->getLine()
+                ]);
+
+                return response()->json([
+                    'status' => 400,
+                    'message' => $e->getMessage()
+                ], 400);
             }
+        } else {
+            Log::error('Failed to open ZIP file', ['file' => $archivo->getClientOriginalName()]);
+
+            return response()->json([
+                'status' => 500,
+                'message' => 'Failed to open ZIP file'
+            ], 500);
         }
     }
+
 
     public function getDataFollowing($user)
     {
