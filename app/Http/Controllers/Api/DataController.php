@@ -41,7 +41,6 @@ class DataController extends Controller
 
             try {
 
-                // evitar errores de unique constraint
                 $usuario = Usuario::updateOrCreate(
                     ['username' => $nombreUsuario],
                     [] 
