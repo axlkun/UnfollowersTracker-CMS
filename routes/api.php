@@ -17,3 +17,4 @@ Route::post('contact-us',[ContactUsController::class,'store']);
 Route::post('store',[DataController::class,'store']);
 Route::get('unfollowers/{user}',[DataController::class,'getUnfollowers']);
 Route::get('unfollowing/{user}',[DataController::class,'getNotFollowing']);
+Route::get('pending-follow-requests/{user}', [DataController::class, 'getPendingFollowRequests']);
