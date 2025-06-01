@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Validator;
 use App\Models\Usuario;
 use App\Models\Data;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class DataController extends Controller
 {
@@ -43,47 +44,57 @@ class DataController extends Controller
 
                 $usuario = Usuario::updateOrCreate(
                     ['username' => $nombreUsuario],
-                    [] 
+                    []
                 );
 
                 $usuarioId = $usuario->id;
                 $data = [];
 
-                $requiredFiles = [
-                    'connections/followers_and_following/followers_1.json',
-                    'connections/followers_and_following/following.json',
+                $targetPath = 'connections/followers_and_following/';
+
+                // Lista blanca de archivos permitidos
+                $expectedFiles = [
+                    'close_friends.json',
+                    'followers_1.json', // obligatorio
+                    'following.json',   // obligatorio
+                    'hide_story_from.json',
+                    'pending_follow_requests.json',
+                    'recent_follow_requests.json',
+                    'recently_unfollowed_accounts.json',
+                    'removed_suggestions.json'
                 ];
 
-                // Verificar que los archivos requeridos existan en el ZIP
-                foreach ($requiredFiles as $requiredFile) {
-                    if ($zip->locateName($requiredFile) === false) {
-                        throw new \Exception("ZIP File Incomplete. Missing file: '$requiredFile' ");
+                $requiredFiles = ['followers_1.json', 'following.json'];
+
+                // Validar presencia de los archivos obligatorios
+                foreach ($requiredFiles as $file) {
+                    $fullPath = $targetPath . $file;
+
+                    if ($zip->locateName($fullPath) === false) {
+                        throw new \Exception("ZIP File Incomplete. Missing file: '$file'");
                     }
 
-                    $contenido = $zip->getFromName($requiredFile);
+                    $contenido = $zip->getFromName($fullPath);
                     $jsonDecoded = json_decode($contenido, true);
 
                     if (is_null($jsonDecoded)) {
-                        throw new \Exception("Check your ZIP File. Error in File '$requiredFile' ");
+                        throw new \Exception("Invalid JSON in required file: '$file'");
                     }
                 }
 
-                // Si los archivos obligatorios existen y son válidos, ahora procesamos todo
-                for ($i = 0; $i < $zip->numFiles; $i++) {
-                    $nombreDocumento = $zip->getNameIndex($i);
+                // Procesar archivos opcionales
+                foreach ($expectedFiles as $file) {
 
-                    // Solo procesar archivos JSON
-                    if (pathinfo($nombreDocumento, PATHINFO_EXTENSION) !== 'json') {
-                        continue;
-                    }
+                    $fullPath = $targetPath . $file;
 
-                    $nombreCampo = pathinfo($nombreDocumento, PATHINFO_FILENAME);
-                    $contenidoJSON = $zip->getFromName($nombreDocumento);
-                    $datos = json_decode($contenidoJSON, true);
+                    if ($zip->locateName($fullPath) !== false) {
+                        $contenido = $zip->getFromName($fullPath);
+                        $jsonDecoded = json_decode($contenido, true);
 
-                    // Validar si el JSON se pudo parsear correctamente
-                    if (!is_null($datos)) {
-                        $data[$nombreCampo] = $datos;
+                        if (!is_null($jsonDecoded)) {
+                            $nombreCampo = pathinfo($file, PATHINFO_FILENAME);
+                            $data[$nombreCampo] = $jsonDecoded;
+                        }
                     }
                 }
 
@@ -281,6 +292,79 @@ class DataController extends Controller
                 'file' => $e->getFile(),
                 'line' => $e->getLine()
             ]);
+            return response()->json([
+                'status' => 500,
+                'message' => 'Something went wrong!'
+            ], 500);
+        }
+    }
+
+    public function getPendingFollowRequests($user)
+    {
+        try {
+            $usuario = Usuario::where('username', $user)->first();
+
+            if (!$usuario) {
+                Log::warning('Error in getPendingFollowRequests: User not found', ['username' => $user]);
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'User not found'
+                ], 404);
+            }
+
+            $pending = optional($usuario->api_data)->pending_follow_requests;
+
+            // Validación 1: Campo null
+            if (is_null($pending)) {
+                Log::info('No pending follow requests found', ['username' => $user]);
+                return response()->json([
+                    'status' => 500,
+                    'message' => 'You are all set! You have no pending follow requests waiting to be accepted'
+                ], 500);
+            }
+
+            // Validación 2: Campo presente pero con estructura inválida
+            if (!is_array($pending) || !isset($pending['relationships_follow_requests_sent'])) {
+                Log::warning('ZIP data has invalid structure', ['username' => $user, 'pending' => $pending]);
+                return response()->json([
+                    'status' => 422,
+                    'message' => 'ZIP data has invalid structure'
+                ], 422);
+            }
+
+            // Procesamiento normal
+            $array_pendientes = [];
+
+            foreach ($pending['relationships_follow_requests_sent'] as $data) {
+                if (!isset($data['string_list_data'][0])) {
+                    continue;
+                }
+
+                $value = $data['string_list_data'][0]['value'] ?? null;
+                $timestamp = isset($data['string_list_data'][0]['timestamp'])
+                    ? date('Y-m-d', $data['string_list_data'][0]['timestamp'])
+                    : null;
+                $link = $data['string_list_data'][0]['href'] ?? null;
+
+                $array_pendientes[] = [
+                    "user_name" => $value,
+                    "enlace" => $link,
+                    "date" => $timestamp
+                ];
+            }
+
+            return response()->json([
+                'status' => 200,
+                'pending_requests' => $array_pendientes
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error('Error in getPendingFollowRequests', [
+                'username' => $user,
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ]);
+
             return response()->json([
                 'status' => 500,
                 'message' => 'Something went wrong!'
