@@ -325,10 +325,10 @@ class DataController extends Controller
 
             // Validación 2: Campo presente pero con estructura inválida
             if (!is_array($pending) || !isset($pending['relationships_follow_requests_sent'])) {
-                Log::warning('ZIP data has invalid structure', ['username' => $user, 'pending' => $pending]);
+                Log::warning('ZIP data has invalid structure.', ['username' => $user, 'pending' => $pending]);
                 return response()->json([
                     'status' => 422,
-                    'message' => 'ZIP data has invalid structure'
+                    'message' => 'The ZIP file has an invalid structure. Please try again with a different ZIP file'
                 ], 422);
             }
 
