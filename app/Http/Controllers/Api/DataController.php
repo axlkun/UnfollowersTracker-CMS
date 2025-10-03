@@ -145,43 +145,89 @@ class DataController extends Controller
     }
 
 
+    // public function getDataFollowing($user)
+    // {
+    //     try {
+    //         $usuario = Usuario::where('username', $user)->first();
+
+    //         if (!$usuario) {
+    //             Log::warning('Error in getDataFollowing: User not found', ['username' => $user]);
+    //             return false;
+    //         }
+
+    //         $following = $usuario->api_data->following;
+    //         $array_seguidos = array();
+
+    //         // validacion aqui
+    //         foreach ($following['relationships_following'] as $data) {
+    //             $value = $data['string_list_data'][0]['value'];
+    //             $timestamp = date('Y-m-d', $data['string_list_data'][0]['timestamp']);
+    //             $link = $data['string_list_data'][0]['href'];
+
+    //             $array_seguidos[] = array(
+    //                 "user_name" => $value,
+    //                 "enlace" => $link,
+    //                 "date" => $timestamp
+    //             );
+    //         }
+
+    //         return $array_seguidos;
+    //     } catch (\Exception $e) {
+    //         Log::error('Error in getDataFollowing', [
+    //             'username' => $user,
+    //             'message' => $e->getMessage(),
+    //             'file' => $e->getFile(),
+    //             'line' => $e->getLine()
+    //         ]);
+    //         return false;
+    //     }
+    // }
+
     public function getDataFollowing($user)
-    {
-        try {
-            $usuario = Usuario::where('username', $user)->first();
+{
+    try {
+        $usuario = Usuario::where('username', $user)->first();
 
-            if (!$usuario) {
-                Log::warning('Error in getDataFollowing: User not found', ['username' => $user]);
-                return false;
-            }
-
-            $following = $usuario->api_data->following;
-            $array_seguidos = array();
-
-            // validacion aqui
-            foreach ($following['relationships_following'] as $data) {
-                $value = $data['string_list_data'][0]['value'];
-                $timestamp = date('Y-m-d', $data['string_list_data'][0]['timestamp']);
-                $link = $data['string_list_data'][0]['href'];
-
-                $array_seguidos[] = array(
-                    "user_name" => $value,
-                    "enlace" => $link,
-                    "date" => $timestamp
-                );
-            }
-
-            return $array_seguidos;
-        } catch (\Exception $e) {
-            Log::error('Error in getDataFollowing', [
-                'username' => $user,
-                'message' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine()
-            ]);
+        if (!$usuario) {
+            Log::warning('Error in getDataFollowing: User not found', ['username' => $user]);
             return false;
         }
+
+        $following = $usuario->api_data->following;
+        $array_seguidos = [];
+
+        if (!isset($following['relationships_following'])) {
+            Log::warning('Error in getDataFollowing: relationships_following not found', ['username' => $user]);
+            return false;
+        }
+
+        foreach ($following['relationships_following'] as $data) {
+            // Username ahora viene en "title"
+            $value = isset($data['title']) ? $data['title'] : null;
+
+            // Datos dentro de string_list_data
+            $href = $data['string_list_data'][0]['href'] ?? null;
+            $timestampRaw = $data['string_list_data'][0]['timestamp'] ?? null;
+            $timestamp = $timestampRaw ? date('Y-m-d', $timestampRaw) : null;
+
+            $array_seguidos[] = [
+                "user_name" => $value,
+                "enlace" => $href,
+                "date" => $timestamp
+            ];
+        }
+
+        return $array_seguidos;
+    } catch (\Exception $e) {
+        Log::error('Error in getDataFollowing', [
+            'username' => $user,
+            'message' => $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine()
+        ]);
+        return false;
     }
+}
 
     public function getDataFollowers($user)
     {
