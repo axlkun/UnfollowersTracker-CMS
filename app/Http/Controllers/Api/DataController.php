@@ -9,7 +9,6 @@ use Illuminate\Support\Facades\Validator;
 use App\Models\Usuario;
 use App\Models\Data;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 class DataController extends Controller
 {
@@ -184,50 +183,50 @@ class DataController extends Controller
     // }
 
     public function getDataFollowing($user)
-{
-    try {
-        $usuario = Usuario::where('username', $user)->first();
+    {
+        try {
+            $usuario = Usuario::where('username', $user)->first();
 
-        if (!$usuario) {
-            Log::warning('Error in getDataFollowing: User not found', ['username' => $user]);
+            if (!$usuario) {
+                Log::warning('Error in getDataFollowing: User not found', ['username' => $user]);
+                return false;
+            }
+
+            $following = $usuario->api_data->following;
+            $array_seguidos = [];
+
+            if (!isset($following['relationships_following'])) {
+                Log::warning('Error in getDataFollowing: relationships_following not found', ['username' => $user]);
+                return false;
+            }
+
+            foreach ($following['relationships_following'] as $data) {
+                // Username ahora viene en "title"
+                $value = isset($data['title']) ? $data['title'] : null;
+
+                // Datos dentro de string_list_data
+                $href = $data['string_list_data'][0]['href'] ?? null;
+                $timestampRaw = $data['string_list_data'][0]['timestamp'] ?? null;
+                $timestamp = $timestampRaw ? date('Y-m-d', $timestampRaw) : null;
+
+                $array_seguidos[] = [
+                    "user_name" => $value,
+                    "enlace" => $href,
+                    "date" => $timestamp
+                ];
+            }
+
+            return $array_seguidos;
+        } catch (\Exception $e) {
+            Log::error('Error in getDataFollowing', [
+                'username' => $user,
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ]);
             return false;
         }
-
-        $following = $usuario->api_data->following;
-        $array_seguidos = [];
-
-        if (!isset($following['relationships_following'])) {
-            Log::warning('Error in getDataFollowing: relationships_following not found', ['username' => $user]);
-            return false;
-        }
-
-        foreach ($following['relationships_following'] as $data) {
-            // Username ahora viene en "title"
-            $value = isset($data['title']) ? $data['title'] : null;
-
-            // Datos dentro de string_list_data
-            $href = $data['string_list_data'][0]['href'] ?? null;
-            $timestampRaw = $data['string_list_data'][0]['timestamp'] ?? null;
-            $timestamp = $timestampRaw ? date('Y-m-d', $timestampRaw) : null;
-
-            $array_seguidos[] = [
-                "user_name" => $value,
-                "enlace" => $href,
-                "date" => $timestamp
-            ];
-        }
-
-        return $array_seguidos;
-    } catch (\Exception $e) {
-        Log::error('Error in getDataFollowing', [
-            'username' => $user,
-            'message' => $e->getMessage(),
-            'file' => $e->getFile(),
-            'line' => $e->getLine()
-        ]);
-        return false;
     }
-}
 
     public function getDataFollowers($user)
     {
@@ -360,17 +359,24 @@ class DataController extends Controller
 
             $pending = optional($usuario->api_data)->pending_follow_requests;
 
-            // Validación 1: Campo null
-            if (is_null($pending)) {
+            // Validación 1: Campo vacío o null -> no es error, simplemente no hay pendientes
+            if (empty($pending)) {
                 Log::info('No pending follow requests found', ['username' => $user]);
                 return response()->json([
-                    'status' => 500,
-                    'message' => 'You are all set! You have no pending follow requests waiting to be accepted'
-                ], 500);
+                    'status' => 200,
+                    'message' => 'You are all set! You have no pending follow requests waiting to be accepted',
+                    'pending_requests' => []
+                ], 200);
             }
 
-            // Validación 2: Campo presente pero con estructura inválida
-            if (!is_array($pending) || !isset($pending['relationships_follow_requests_sent'])) {
+            // Soportamos dos formatos posibles:
+            // 1) Formato "label_values" (el que compartiste, viene de export HTML convertido)
+            // 2) Formato clásico de Instagram (string_list_data)
+            if (is_array($pending) && isset($pending['relationships_follow_requests_sent']) && is_array($pending['relationships_follow_requests_sent'])) {
+                $records = $pending['relationships_follow_requests_sent'];
+            } elseif (is_array($pending) && array_keys($pending) === range(0, count($pending) - 1)) {
+                $records = $pending; // array plano, tipo lista
+            } else {
                 Log::warning('ZIP data has invalid structure.', ['username' => $user, 'pending' => $pending]);
                 return response()->json([
                     'status' => 422,
@@ -378,24 +384,50 @@ class DataController extends Controller
                 ], 422);
             }
 
-            // Procesamiento normal
             $array_pendientes = [];
 
-            foreach ($pending['relationships_follow_requests_sent'] as $data) {
-                if (!isset($data['string_list_data'][0])) {
+            foreach ($records as $data) {
+                $value = null;
+                $link = null;
+                $timestamp = null;
+
+                // --- Formato clásico ---
+                if (isset($data['string_list_data'][0])) {
+                    $entry = $data['string_list_data'][0];
+                    $value = $entry['value'] ?? null;
+                    $link = $entry['href'] ?? null;
+                    $timestamp = $entry['timestamp'] ?? null;
+                }
+                // --- Formato label_values (posicional: 0=URL, 1=Nombre, 2=Nombre de usuario) ---
+                elseif (isset($data['label_values']) && is_array($data['label_values'])) {
+                    $labelValues = array_values($data['label_values']);
+
+                    // El username siempre debería ser el 3er elemento (índice 2)
+                    $value = isset($labelValues[2]['value'])
+                        ? trim($labelValues[2]['value'])
+                        : null;
+                    $value = $value !== '' ? $value : null;
+
+                    // El timestamp real viene al nivel del registro, no dentro de label_values
+                    $timestamp = $data['timestamp'] ?? null;
+
+                    // La URL viene vacía en el export, así que la construimos nosotros
+                    $link = $value ? 'https://www.instagram.com/' . $value : null;
+                }
+                // Registro sin estructura reconocible: se descarta, no truena
+                else {
                     continue;
                 }
 
-                $value = $data['string_list_data'][0]['value'] ?? null;
-                $timestamp = isset($data['string_list_data'][0]['timestamp'])
-                    ? date('Y-m-d', $data['string_list_data'][0]['timestamp'])
-                    : null;
-                $link = $data['string_list_data'][0]['href'] ?? null;
+                // Sin username no sirve el registro (evita meter "basura")
+                if (empty($value)) {
+                    continue;
+                }
 
                 $array_pendientes[] = [
                     "user_name" => $value,
                     "enlace" => $link,
-                    "date" => $timestamp
+                    "date" => $timestamp ? date('Y-m-d', (int) $timestamp) : null
                 ];
             }
 
@@ -417,4 +449,77 @@ class DataController extends Controller
             ], 500);
         }
     }
+
+    // public function getPendingFollowRequests($user)
+    // {
+    //     try {
+    //         $usuario = Usuario::where('username', $user)->first();
+
+    //         if (!$usuario) {
+    //             Log::warning('Error in getPendingFollowRequests: User not found', ['username' => $user]);
+    //             return response()->json([
+    //                 'status' => 404,
+    //                 'message' => 'User not found'
+    //             ], 404);
+    //         }
+
+    //         $pending = optional($usuario->api_data)->pending_follow_requests;
+
+    //         // Validación 1: Campo null
+    //         if (is_null($pending)) {
+    //             Log::info('No pending follow requests found', ['username' => $user]);
+    //             return response()->json([
+    //                 'status' => 500,
+    //                 'message' => 'You are all set! You have no pending follow requests waiting to be accepted'
+    //             ], 500);
+    //         }
+
+    //         // Validación 2: Campo presente pero con estructura inválida
+    //         if (!is_array($pending) || !isset($pending['relationships_follow_requests_sent'])) {
+    //             Log::warning('ZIP data has invalid structure.', ['username' => $user, 'pending' => $pending]);
+    //             return response()->json([
+    //                 'status' => 422,
+    //                 'message' => 'The ZIP file has an invalid structure. Please try again with a different ZIP file'
+    //             ], 422);
+    //         }
+
+    //         // Procesamiento normal
+    //         $array_pendientes = [];
+
+    //         foreach ($pending['relationships_follow_requests_sent'] as $data) {
+    //             if (!isset($data['string_list_data'][0])) {
+    //                 continue;
+    //             }
+
+    //             $value = $data['string_list_data'][0]['value'] ?? null;
+    //             $timestamp = isset($data['string_list_data'][0]['timestamp'])
+    //                 ? date('Y-m-d', $data['string_list_data'][0]['timestamp'])
+    //                 : null;
+    //             $link = $data['string_list_data'][0]['href'] ?? null;
+
+    //             $array_pendientes[] = [
+    //                 "user_name" => $value,
+    //                 "enlace" => $link,
+    //                 "date" => $timestamp
+    //             ];
+    //         }
+
+    //         return response()->json([
+    //             'status' => 200,
+    //             'pending_requests' => $array_pendientes
+    //         ], 200);
+    //     } catch (\Exception $e) {
+    //         Log::error('Error in getPendingFollowRequests', [
+    //             'username' => $user,
+    //             'message' => $e->getMessage(),
+    //             'file' => $e->getFile(),
+    //             'line' => $e->getLine()
+    //         ]);
+
+    //         return response()->json([
+    //             'status' => 500,
+    //             'message' => 'Something went wrong!'
+    //         ], 500);
+    //     }
+    // }
 }
